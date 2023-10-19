@@ -1,16 +1,14 @@
+use slug::slugify;
 use std::env;
 use std::error::Error;
 use std::process::exit;
-
-use slug::slugify;
-
 struct Command {
     name: &'static str,
     description: &'static str,
     transformation: fn(&String) -> String,
 }
 
-const COMMANDS: &'static [Command] = &[
+const COMMANDS: &[Command] = &[
     Command {
         name: "copy",
         description: "copies parameter to output without any transformation",

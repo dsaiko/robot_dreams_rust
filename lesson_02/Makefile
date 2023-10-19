@@ -1,4 +1,4 @@
-build: clean codecheck fmt fix doc test
+build: codecheck fmt fix doc test
 	cargo build
 	cargo build --release
 
