@@ -1,10 +1,8 @@
-use crate::command_csv::command_csv_format;
-
 use std::error::Error;
-
 use std::fs;
-
 use std::path::PathBuf;
+
+use crate::command_csv::command_csv_format;
 
 #[test]
 fn csv_test() -> Result<(), Box<dyn Error>> {

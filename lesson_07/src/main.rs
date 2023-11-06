@@ -1,8 +1,3 @@
-mod command_csv;
-#[cfg(test)]
-mod command_csv_tests;
-mod commands;
-
 use std::error::Error;
 use std::io::Read;
 use std::str::FromStr;
@@ -10,6 +5,11 @@ use std::sync::mpsc::channel;
 use std::{env, io, thread};
 
 use commands::{Command, COMMANDS};
+
+mod command_csv;
+#[cfg(test)]
+mod command_csv_tests;
+mod commands;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     // read arguments

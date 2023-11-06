@@ -1,7 +1,8 @@
-use chrono::Local;
 use std::error::Error;
 use std::io::{self, Write};
 use std::{thread, time};
+
+use chrono::Local;
 
 const MESSAGE: &str = "> HELLO RUST <";
 const BOX_SIZE: usize = 50;

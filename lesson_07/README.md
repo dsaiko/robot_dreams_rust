@@ -1,4 +1,4 @@
-# Lesson 05
+# Lesson 07
 [back to main](../README.md)
 
 https://robot-dreams-rust.mag.wiki/7-concurrency-multithreading/index.html#homework

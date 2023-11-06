@@ -1,12 +1,13 @@
+use std::env;
+use std::error::Error;
+use std::io::Read;
+
+use commands::COMMANDS;
+
 mod command_csv;
 #[cfg(test)]
 mod command_csv_tests;
 mod commands;
-
-use commands::COMMANDS;
-use std::env;
-use std::error::Error;
-use std::io::Read;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     // read arguments

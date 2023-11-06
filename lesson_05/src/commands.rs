@@ -1,8 +1,9 @@
 use std::error::Error;
 use std::io::Write;
 
-use crate::command_csv::command_csv_format;
 use slug::slugify;
+
+use crate::command_csv::command_csv_format;
 
 // Type of command function.
 // Function takes input string to manipulate,
