@@ -1,3 +1,4 @@
+use std::{fs, io, thread};
 use std::error::Error;
 use std::ffi::OsStr;
 use std::io::{Read, Write};
@@ -8,12 +9,10 @@ use std::process::exit;
 use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{fs, io, thread};
 
 use image::ImageFormat;
-use serde::Deserialize;
-
 use lesson_09::{Message, ServerConfig};
+use serde::Deserialize;
 
 struct Client {
     config: ClientConfig,

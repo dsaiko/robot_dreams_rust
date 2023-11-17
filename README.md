@@ -1,5 +1,10 @@
 # Robot Dreams Rust Developer
 
+Lesson 11: [Client-Server Modularization into Crates](lesson_11/README.md)
+
+*this is a workspace project which needs to be opened and build by its own, 
+as Cargo does not support nesteted Workspaces.
+
 Lesson 09: [Client-Server Networking](lesson_09/README.md)
 
 Lesson 07: [Multi Threading](lesson_07/README.md)

@@ -7,4 +7,5 @@ members = [
     "lesson_05",
     "lesson_07",
     "lesson_09",
+    #"lesson_11", -- nested workspaces are not supported
 ]

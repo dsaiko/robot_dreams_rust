@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::ffi::OsStr;
 use std::io::{Read, Write};
 use std::iter::repeat_with;
 use std::net::TcpStream;
@@ -12,8 +11,9 @@ use std::{fs, io, thread};
 
 use image::ImageFormat;
 use serde::Deserialize;
+use tracing::{error, info};
 
-use lesson_09::{Message, ServerConfig};
+use chatlib::Message;
 
 struct Client {
     config: ClientConfig,
@@ -21,16 +21,28 @@ struct Client {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt::init();
+
     Client::new().run()
 }
 
 /// Client env configuration.
 #[derive(Deserialize, Debug)]
 pub struct ClientConfig {
-    #[serde(flatten)]
-    pub server: ServerConfig,
+    #[serde(default = "server_config_default_port")]
+    pub port: u16,
+    #[serde(default = "server_config_default_hostname")]
+    pub hostname: String,
     #[serde(default = "client_config_default_username")]
     pub username: String,
+}
+
+fn server_config_default_port() -> u16 {
+    11111
+}
+
+fn server_config_default_hostname() -> String {
+    "localhost".to_owned()
 }
 
 /// Randomly generated username.
@@ -68,10 +80,7 @@ impl Client {
     /// create a new server stream
     fn create_stream(&self) -> Result<TcpStream, Box<dyn Error + '_>> {
         let mut guard = self.stream.lock()?;
-        let stream = TcpStream::connect(format!(
-            "{}:{}",
-            self.config.server.hostname, self.config.server.port
-        ))?;
+        let stream = TcpStream::connect(format!("{}:{}", self.config.hostname, self.config.port))?;
         *guard = Some(stream.try_clone()?);
         Ok(stream)
     }
@@ -103,19 +112,19 @@ impl Client {
 
             // process message
             match msg {
-                Message::Text(text) => println!("<<< {}", text),
-                Message::Image(name, ext, bytes) => {
-                    print!("<<< image: {}.{}", name, ext);
-                    match self.process_incoming_image(name, ext, bytes) {
-                        Ok(file) => println!(" -> {}", file),
-                        Err(e) => println!(" error: {}", e),
+                Message::Text(text) => info!(text, "Incoming"),
+                Message::Image(image, ext, bytes) => {
+                    info!(image, ext, "Incoming");
+                    match self.process_incoming_image(image, ext, bytes) {
+                        Ok(name) => info!(name, "Image saved"),
+                        Err(e) => error!("Unable to save image: {}", e),
                     }
                 }
-                Message::File(name, bytes) => {
-                    print!("<<< file: {}", name);
-                    match self.process_incoming_file(name, bytes) {
-                        Ok(file) => println!(" -> {}", file),
-                        Err(e) => println!(" error: {}", e),
+                Message::File(file, bytes) => {
+                    info!(file, "incoming");
+                    match self.process_incoming_file(file, bytes) {
+                        Ok(name) => info!(name, "File saved"),
+                        Err(e) => error!("Unable to save file: {}", e),
                     }
                 }
             };
@@ -123,11 +132,10 @@ impl Client {
     }
 
     fn run(&self) -> Result<(), Box<dyn Error>> {
-        println!("Hello to Lesson09 minimal chat client.");
-        println!("\tUSERNAME = {}", self.config.username);
-        println!("\tHOSTNAME = {}", self.config.server.hostname);
-        println!("\tPORT = {}", self.config.server.port);
-        println!();
+        info!("Hello to the Chat Client!");
+        info!(self.config.username, "USERNAME");
+        info!(self.config.hostname, "HOSTNAME");
+        info!(self.config.port, "PORT");
 
         thread::scope(|scope| {
             let (tx, rx) = channel::<Message>();
@@ -135,30 +143,29 @@ impl Client {
             // command processor
             scope.spawn(move || {
                 for cmd in rx.iter() {
-                    let log = match &cmd {
-                        Message::Text(msg) => msg.clone(),
-                        Message::Image(name, ext, _) => format!("Sending image: {}.{}", name, ext),
-                        Message::File(name, _) => format!("Sending file: {}", name),
+                    match &cmd {
+                        Message::Text(text) => info!(text, "Outgoing"),
+                        Message::Image(image, ext, _) => info!(image, ext, "Outgoing"),
+                        Message::File(file, _) => info!(file, "Outgoing"),
                     };
-                    println!(">>> {}", log);
 
                     let mut stream = if let Some(stream) = self.get_stream() {
                         stream
                     } else {
                         let stream = self.create_stream();
                         let Ok(stream) = stream else {
-                            eprintln!("error: {}", stream.err().unwrap());
+                            error!("{}", stream.err().unwrap());
                             continue;
                         };
 
                         let reply_stream = stream.try_clone();
                         let Ok(reply_stream) = reply_stream else {
-                            eprintln!("error: {}", reply_stream.err().unwrap());
+                            error!("{}", reply_stream.err().unwrap());
                             continue;
                         };
                         scope.spawn(move || {
                             if let Err(response) = self.read_server_replies(reply_stream) {
-                                eprintln!("disconnecting reply reader: {}", response)
+                                error!("Server disconnected: {}", response);
                             }
                         });
 
@@ -166,7 +173,7 @@ impl Client {
                     };
 
                     if let Err(e) = self.send_message(&mut stream, cmd) {
-                        eprintln!("error: {}", e);
+                        error!("{}", e);
 
                         // reset stream
                         if let Ok(mut guard) = self.stream.lock() {
@@ -192,13 +199,18 @@ impl Client {
                         continue;
                     }
 
-                    if cmd_line == ".quit" {
-                        break;
+                    match cmd_line {
+                        ".quit" => break,
+                        ".ls" => {
+                            self.ls();
+                            continue;
+                        }
+                        &_ => {}
                     }
 
                     let cmd = self.message_from_command_line(cmd_line);
                     let Ok(cmd) = cmd else {
-                        eprintln!("error: {}", cmd.err().unwrap());
+                        error!("{}", cmd.err().unwrap());
                         continue;
                     };
 
@@ -206,7 +218,7 @@ impl Client {
                     // command: .file a.dat b.dat
                     for msg in cmd {
                         if let Err(e) = tx_command.send(msg) {
-                            eprintln!("error: {}", e);
+                            error!("{}", e);
                         }
                     }
                 }
@@ -236,45 +248,19 @@ impl Client {
             return Err("no command supplied".into());
         };
 
-        let message = match *cmd {
-            ".file" => self.create_file_message(params)?,
-            ".image" => self.create_image_message(params)?,
-            _ => vec![Message::Text(cmd_line.to_owned())],
+        let message: Vec<Message> = match *cmd {
+            ".file" => params
+                .iter()
+                .map(|filename| Message::new_file_message(filename))
+                .collect::<Result<Vec<_>, _>>()?,
+            ".image" => params
+                .iter()
+                .map(|filename| Message::new_image_message(filename))
+                .collect::<Result<Vec<_>, _>>()?,
+            _ => vec![Message::new_text_message(cmd_line)],
         };
 
         Ok(message)
-    }
-
-    /// construct file message f
-    fn create_file_message(&self, files: &[&str]) -> Result<Vec<Message>, Box<dyn Error>> {
-        let mut messages = vec![];
-        for file in files {
-            let bytes = fs::read(file)?;
-            messages.push(Message::File(file.to_string(), bytes))
-        }
-
-        Ok(messages)
-    }
-
-    /// construct image message
-    /// images will be converted to png when received
-    fn create_image_message(&self, files: &[&str]) -> Result<Vec<Message>, Box<dyn Error>> {
-        let mut messages = vec![];
-        for file in files {
-            // read image as bytes
-            let bytes = fs::read(file)?;
-            let Some(name) = Path::new(file).file_stem().and_then(OsStr::to_str) else {
-                return Err("unable to read file name".into());
-            };
-
-            let Some(ext) = Path::new(file).extension().and_then(OsStr::to_str) else {
-                return Err("unable to read file extension".into());
-            };
-
-            messages.push(Message::Image(name.to_owned(), ext.to_owned(), bytes))
-        }
-
-        Ok(messages)
     }
 
     /// convert and save incoming image
@@ -324,25 +310,16 @@ impl Client {
 
         Ok(output_file)
     }
-}
+    fn ls(&self) {
+        let paths = fs::read_dir("./");
 
-#[cfg(test)]
-mod tests {
-    use lesson_09::Message;
+        let Ok(paths) = paths else {
+            error!("{}", paths.err().unwrap());
+            return;
+        };
 
-    use crate::Client;
-
-    #[test]
-    fn test_command_text() {
-        let source = Client::new()
-            .message_from_command_line("some text")
-            .unwrap();
-        assert_eq!(source, vec![Message::Text("some text".to_owned())]);
-    }
-
-    #[test]
-    fn test_command_text_one_word() {
-        let source = Client::new().message_from_command_line("some").unwrap();
-        assert_eq!(source, vec![Message::Text("some".to_owned())]);
+        for path in paths.flatten() {
+            println!("\t{}", path.path().display());
+        }
     }
 }

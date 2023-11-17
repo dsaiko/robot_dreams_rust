@@ -15,5 +15,5 @@ target
 
 # IDE
 .idea
-/lesson_09/resources/incoming_files/
-/lesson_09/resources/incoming_images/
+incoming_files
+incoming_images
