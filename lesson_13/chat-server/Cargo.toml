@@ -1,0 +1,13 @@
+[package]
+name = "chat-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+envy = "0.4.2"
+serde = {  version = "1.0.192", features = ["derive"] }
+chatlib = { package = "chat-lib", path = "../chat-lib" }
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
+thiserror = "1.0.50"
+anyhow = "1.0.75"

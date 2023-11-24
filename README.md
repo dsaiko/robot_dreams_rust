@@ -1,9 +1,12 @@
 # Robot Dreams Rust Developer
 
+Lesson 13: [Client-Server Error Handling](lesson_13/README.md)
+
+*this is a workspace project which needs to be opened and build by its own.
+
 Lesson 11: [Client-Server Modularization into Crates](lesson_11/README.md)
 
-*this is a workspace project which needs to be opened and build by its own, 
-as Cargo does not support nesteted Workspaces.
+*this is a workspace project which needs to be opened and build by its own.
 
 Lesson 09: [Client-Server Networking](lesson_09/README.md)
 
