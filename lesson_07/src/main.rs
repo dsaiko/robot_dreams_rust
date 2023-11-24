@@ -26,7 +26,7 @@ pub fn process_cmd_param(cmd_line: &[String]) -> Result<(), Box<dyn Error>> {
 
     // get selected command
     let Ok(cmd) = Command::from_str(&cmd_name) else {
-        return usage("unknown command");
+        return usage(Some("unknown command"));
     };
 
     if cmd.should_exit {
@@ -53,7 +53,7 @@ pub fn process_cmd_param(cmd_line: &[String]) -> Result<(), Box<dyn Error>> {
 
 pub fn process_interactive() -> Result<(), Box<dyn Error>> {
     // print usage:
-    usage("")?;
+    usage(None)?;
 
     thread::scope(|scope| {
         let (tx, rx) = channel::<(Command, String)>();
@@ -110,15 +110,14 @@ pub fn process_interactive() -> Result<(), Box<dyn Error>> {
 }
 
 // Prints app usage and returns Error.
-fn usage(err: &str) -> Result<(), Box<dyn Error>> {
+fn usage(err: Option<&str>) -> Result<(), Box<dyn Error>> {
     eprintln!("COMMAND is one of:");
     for command in COMMANDS {
         eprintln!("\t{}: {}", command.name.join("|"), command.description);
     }
 
-    if err.is_empty() {
-        Ok(())
-    } else {
-        Err(err.into())
+    match err {
+        None => Ok(()),
+        Some(err) => Err(err.into()),
     }
 }

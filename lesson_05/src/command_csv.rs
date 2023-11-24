@@ -55,13 +55,11 @@ impl CSVTable {
     }
 
     // Append data to table.
-    fn append(&mut self, row: Vec<String>) {
+    fn append(&mut self, mut row: Vec<String>) {
         // skip empty records
-        if row.join("").is_empty() {
+        if row.iter().all(|x| x.is_empty()) {
             return;
         }
-
-        let mut row = row;
 
         // fix rows with less columns than headers.
         while row.len() < self.headers.len() {
